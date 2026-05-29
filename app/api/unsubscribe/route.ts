@@ -49,7 +49,7 @@ export async function GET(req: Request) {
     box-shadow:0 0 22px rgba(34,211,238,.45)}
 </style></head>
 <body><div class="card"><h1>${title}</h1><p>${msg}</p>
-<a href="https://dufengyun.xyz">返回首页</a></div></body></html>`;
+<a href="https://ai.dufengyun.xyz">返回首页</a></div></body></html>`;
 
   return new Response(html, {
     headers: { "Content-Type": "text/html; charset=utf-8" },
