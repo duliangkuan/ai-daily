@@ -27,37 +27,44 @@ export async function POST(req: Request) {
     const sql = getSql();
     const token = randomUUID();
 
-    // 已存在则重新激活，否则插入新行;返回 unsub_token + 是否已欢迎过
+    // 先看旧状态:决定是否发欢迎信(新邮箱 / 退订后回归 / 从没发过 → 发;已订阅且发过 → 不重发)
+    const prev = (await sql`
+      select status, welcomed_at from subscribers where email = ${email}
+    `) as { status: string; welcomed_at: string | null }[];
+    const prevRow = prev[0];
+
     const rows = (await sql`
       insert into subscribers (email, status, unsub_token)
       values (${email}, 'active', ${token})
       on conflict (email)
       do update set status = 'active', updated_at = now()
-      returning unsub_token, welcomed_at
-    `) as { unsub_token: string; welcomed_at: string | null }[];
+      returning unsub_token
+    `) as { unsub_token: string }[];
+    const unsubToken = rows[0]?.unsub_token ?? token;
 
-    const row = rows[0];
-    // 新订阅(还没发过欢迎)→ 立即发欢迎信;失败不影响订阅成功
-    if (row && !row.welcomed_at) {
+    const shouldWelcome =
+      !prevRow || prevRow.status === "unsubscribed" || !prevRow.welcomed_at;
+
+    let message = "你已经在订阅啦 ✦ 日报每天早晚照常送达你的邮箱";
+    if (shouldWelcome) {
       try {
-        await sendWelcome(email, row.unsub_token);
+        await sendWelcome(email, unsubToken);
         await sql`update subscribers set welcomed_at = now() where email = ${email}`;
+        message = "订阅成功！欢迎邮件已发出，请查收 ✦";
       } catch (e) {
         console.error("[subscribe] 欢迎信发送失败(订阅仍成功):", e);
+        message = "订阅成功！日报每天早晚送达你的邮箱 ✦";
       }
     }
 
     // 实时同步到飞书多维表格;失败不影响订阅成功
     try {
-      await upsertSubscriber(email, "active", row?.unsub_token ?? "", "网站订阅");
+      await upsertSubscriber(email, "active", unsubToken, "网站订阅");
     } catch (e) {
       console.error("[subscribe] 飞书同步失败:", e);
     }
 
-    return NextResponse.json({
-      ok: true,
-      message: "订阅成功！欢迎邮件已发出，请查收 ✦",
-    });
+    return NextResponse.json({ ok: true, message });
   } catch (err) {
     console.error("[subscribe] error:", err);
     return NextResponse.json(

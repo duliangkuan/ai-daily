@@ -51,6 +51,22 @@ export default async function Today() {
             今天的日报还在路上，稍后再来看看 ✦
           </div>
         )}
+
+        {/* 订阅邮件版 CTA */}
+        <a
+          href="/#subscribe"
+          className="glass glass-hover mt-6 flex flex-col items-center gap-3 rounded-2xl px-6 py-8 text-center sm:flex-row sm:justify-between sm:text-left"
+        >
+          <div>
+            <div className="text-lg font-semibold text-white">📮 订阅邮件版</div>
+            <div className="mt-1 text-sm text-white/55">
+              懒得每天来翻？留个邮箱，每天早晚自动直达你的收件箱。
+            </div>
+          </div>
+          <span className="btn-neon whitespace-nowrap rounded-xl px-6 py-3 text-sm font-semibold text-ink-900">
+            免费订阅 →
+          </span>
+        </a>
       </div>
     </main>
   );
