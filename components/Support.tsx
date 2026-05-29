@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { GithubIcon, StarIcon, HeartIcon } from "@/components/Icons";
+import { GithubIcon, StarIcon, HeartIcon, CheckIcon } from "@/components/Icons";
 import { REPO_URL, REWARD_QR } from "@/lib/config";
+
+const STAR_POINTS = [
+  "完整源码公开，前后端一把梭",
+  "MIT 许可，可自由 fork 自部署",
+  "Next.js + Tailwind 构建，持续迭代",
+];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -49,16 +55,33 @@ export default function Support() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
-          className="glass glass-hover group flex flex-col items-center rounded-2xl p-8 text-center"
+          className="glass glass-hover group flex flex-col rounded-2xl p-8"
         >
-          <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-white">
-            <GithubIcon size={30} />
-          </span>
-          <h3 className="mb-2 text-xl font-semibold text-white">在 GitHub 点个 Star</h3>
-          <p className="mb-6 text-sm leading-relaxed text-white/55">
-            项目开源，欢迎围观源码。点个 Star 是对作者最轻巧的鼓励。
-          </p>
-          <span className="btn-neon inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-ink-900">
+          <div className="flex flex-col items-center text-center">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-white">
+              <GithubIcon size={30} />
+            </span>
+            <h3 className="mb-2 text-xl font-semibold text-white">在 GitHub 点个 Star</h3>
+            <p className="text-sm leading-relaxed text-white/55">
+              这是一个独立开发者的开源项目，整套抓取、精选、推送的代码全部公开。你的每一个 Star，都是我继续把它做得更好的动力。
+            </p>
+          </div>
+
+          <ul className="my-6 space-y-3">
+            {STAR_POINTS.map((p) => (
+              <li key={p} className="flex items-center gap-3 text-sm text-white/75">
+                <CheckIcon size={18} />
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mb-6 flex items-center gap-2 overflow-x-auto rounded-xl border border-white/10 bg-black/40 px-4 py-3 font-mono text-xs text-neon-cyan/90">
+            <span className="select-none text-white/30">$</span>
+            <span className="whitespace-nowrap">git clone {REPO_URL}.git</span>
+          </div>
+
+          <span className="btn-neon mt-auto inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-ink-900">
             <StarIcon size={18} />
             Star on GitHub
           </span>
