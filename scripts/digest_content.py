@@ -42,11 +42,21 @@ _META = re.compile(
 )
 
 
+_ANA_MARK = ("AI 热点分析", "AI 深度分析", "核心热点", "深度洞察", "RSS 深度洞察",
+             "研判策略", "热榜分析", "情绪光谱")
+
+
 def _analysis_md(lines):
-    """AI 洞察正文 = 最后一个链接行之后的散文,剔除批次元数据/区块标题等噪声。"""
-    last_link = max((i for i, l in enumerate(lines) if _LINK.search(l)), default=-1)
-    tail = lines[last_link + 1:] if last_link >= 0 else []
-    keep = [l for l in tail if l.strip() and not _META.match(l)]
+    """AI 洞察正文:优先按标志头定位分析段(不管它排在哪),回退到「最后一个链接之后」。
+    再剔除链接行 / 批次元数据 / 区块标题等噪声。"""
+    start = next((i for i, l in enumerate(lines) if any(m in l for m in _ANA_MARK)), -1)
+    if start >= 0:
+        block = lines[start:]
+    else:
+        last_link = max((i for i, l in enumerate(lines) if _LINK.search(l)), default=-1)
+        block = lines[last_link + 1:] if last_link >= 0 else []
+    keep = [l for l in block
+            if l.strip() and not _META.match(l) and not _LINK.search(l)]
     return "\n".join(keep).strip()
 
 
