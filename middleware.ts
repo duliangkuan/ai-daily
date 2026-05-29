@@ -20,8 +20,8 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  return new NextResponse("需要登录", {
+  return new NextResponse("Authentication required", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="AI 日报后台", charset="UTF-8"' },
+    headers: { "WWW-Authenticate": 'Basic realm="ai-daily-admin"' },
   });
 }

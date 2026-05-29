@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getSql } from "@/lib/db";
 import { sendWelcome } from "@/lib/mail";
+import { upsertSubscriber } from "@/lib/feishu";
 
 export const runtime = "nodejs";
 
@@ -44,6 +45,13 @@ export async function POST(req: Request) {
       } catch (e) {
         console.error("[subscribe] 欢迎信发送失败(订阅仍成功):", e);
       }
+    }
+
+    // 实时同步到飞书多维表格;失败不影响订阅成功
+    try {
+      await upsertSubscriber(email, "active", row?.unsub_token ?? "", "网站订阅");
+    } catch (e) {
+      console.error("[subscribe] 飞书同步失败:", e);
     }
 
     return NextResponse.json({

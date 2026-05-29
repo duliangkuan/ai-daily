@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db";
+import { upsertSubscriber } from "@/lib/feishu";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,13 @@ export async function GET(req: Request) {
       if (rows.length > 0) {
         title = "已为你退订";
         msg = "你将不再收到 AI 日报。随时欢迎回来订阅 ✦";
+        // 同步飞书状态
+        const email = (rows[0] as { email: string }).email;
+        try {
+          await upsertSubscriber(email, "unsubscribed", token, "");
+        } catch (e) {
+          console.error("[unsubscribe] 飞书同步失败:", e);
+        }
       }
     } catch (e) {
       console.error("[unsubscribe] error:", e);
