@@ -29,9 +29,27 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 sys.path.insert(0, str(Path(__file__).parent))
 from digest_content import build_sections, analysis_to_html
 
-WECHAT_ENV = Path(r"D:\Dev\ai-wechat-pipeline\.env")
+WECHAT_ENV = Path(os.environ.get("WECHAT_ENV", r"D:\Dev\ai-wechat-pipeline\.env"))
 OUT_DIR = Path(os.environ.get("TRENDRADAR_OUTPUT", r"D:\Dev\TrendRadar\output"))
-FONT = r"C:\Windows\Fonts\msyh.ttc"  # 微软雅黑
+
+# 跨平台中文字体:Windows 微软雅黑 / Linux Noto/文泉驿,取第一个存在的
+FONT_CANDIDATES = [
+    r"C:\Windows\Fonts\msyh.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+]
+
+
+def _font(size):
+    for p in FONT_CANDIDATES:
+        if os.path.exists(p):
+            try:
+                return ImageFont.truetype(p, size)
+            except Exception:
+                pass
+    return ImageFont.load_default()
 
 
 def log(m): print(f"[wechat-draft] {m}", flush=True)
@@ -107,12 +125,7 @@ def make_cover(edition, out_path):
         d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col)
     img = img.filter(ImageFilter.GaussianBlur(90))
     d = ImageDraw.Draw(img)
-    try:
-        f_big = ImageFont.truetype(FONT, 132)
-        f_mid = ImageFont.truetype(FONT, 48)
-        f_sm = ImageFont.truetype(FONT, 32)
-    except Exception:
-        f_big = f_mid = f_sm = ImageFont.load_default()
+    f_big, f_mid, f_sm = _font(132), _font(48), _font(32)
     cx = W // 2
     d.text((cx, 380), "AI 日报", font=f_big, fill=(34, 211, 238), anchor="mm")
     d.text((cx, 478), edition, font=f_mid, fill=(225, 228, 240), anchor="mm")
