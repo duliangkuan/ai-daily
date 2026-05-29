@@ -97,24 +97,26 @@ def _create_draft(token, html, title, digest, author, thumb_id, source_url=""):
 
 # ===== 封面 =====
 def make_cover(edition, out_path):
-    W, H = 900, 500
+    # 正方形 + 文字居中:公众号无论按 1:1 还是 2.35:1 裁切,主体都在正中不被切
+    W, H = 900, 900
     img = Image.new("RGB", (W, H), (10, 10, 26))
     d = ImageDraw.Draw(img)
     # 霓虹辉光:画几个亮圆后整体高斯模糊
-    for (cx, cy, r, col) in [(120, 90, 240, (34, 90, 150)), (820, 60, 230, (80, 50, 140)),
-                             (700, 460, 260, (120, 40, 130))]:
+    for (cx, cy, r, col) in [(190, 200, 330, (34, 90, 150)), (760, 220, 300, (80, 50, 140)),
+                             (500, 820, 380, (120, 40, 130))]:
         d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=col)
-    img = img.filter(ImageFilter.GaussianBlur(70))
+    img = img.filter(ImageFilter.GaussianBlur(90))
     d = ImageDraw.Draw(img)
     try:
-        f_big = ImageFont.truetype(FONT, 96)
-        f_mid = ImageFont.truetype(FONT, 40)
-        f_sm = ImageFont.truetype(FONT, 30)
+        f_big = ImageFont.truetype(FONT, 132)
+        f_mid = ImageFont.truetype(FONT, 48)
+        f_sm = ImageFont.truetype(FONT, 32)
     except Exception:
         f_big = f_mid = f_sm = ImageFont.load_default()
-    d.text((64, 150), "AI 日报", font=f_big, fill=(34, 211, 238))
-    d.text((68, 286), edition, font=f_mid, fill=(225, 228, 240))
-    d.text((68, 410), "研究 Agent 的云  ·  每日 AI 精选", font=f_sm, fill=(150, 150, 185))
+    cx = W // 2
+    d.text((cx, 380), "AI 日报", font=f_big, fill=(34, 211, 238), anchor="mm")
+    d.text((cx, 478), edition, font=f_mid, fill=(225, 228, 240), anchor="mm")
+    d.text((cx, 552), "研究 Agent 的云 · 每日 AI 精选", font=f_sm, fill=(150, 150, 185), anchor="mm")
     img.save(out_path, "PNG")
     return out_path
 
