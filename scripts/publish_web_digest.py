@@ -17,7 +17,7 @@ from pathlib import Path
 import psycopg2
 
 sys.path.insert(0, str(Path(__file__).parent))
-from digest_content import build_sections
+from digest_content import build_sections, analysis_to_html
 
 OUT_DIR = Path(os.environ.get("TRENDRADAR_OUTPUT", r"D:\Dev\TrendRadar\output"))
 
@@ -35,10 +35,9 @@ def log(m): print(f"[web-digest] {m}", flush=True)
 
 
 def build_web_html(analysis_md, sections, total):
-    import markdown
     out = []
     out.append('<section class="digest-analysis"><h2>📊 今日 AI 洞察</h2>')
-    out.append(markdown.markdown(analysis_md, extensions=["extra", "nl2br"]))
+    out.append(analysis_to_html(analysis_md))
     out.append("</section>")
     out.append(f'<p class="digest-note">— 今日全部 {total} 条资讯,按主题分组 —</p>')
     for cat, items in sections:

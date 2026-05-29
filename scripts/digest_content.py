@@ -7,8 +7,25 @@
 整份日报有几百条几百个链接,直接塞邮件会被 DirectMail 判垃圾;
 所以邮件只放「洞察 + 少量精选」,这也是主流 newsletter 的做法。
 """
+import html as _html
 import re
 import markdown
+
+
+def analysis_to_html(md):
+    """逐行渲染 AI 洞察:只处理 **加粗** 和 【小标题】上色;
+    手写的「1. 2. 3.」当普通文字,**不走 markdown 列表解析**(否则生成多余空序号)。"""
+    out = []
+    for raw in md.split("\n"):
+        line = raw.strip()
+        if not line:
+            continue
+        s = _html.escape(line)
+        s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+        s = re.sub(r"【([^】]+)】",
+                   r'<span style="color:#0a84c2;font-weight:600;">【\1】</span>', s)
+        out.append(f"<p>{s}</p>")
+    return "".join(out)
 
 _LINK = re.compile(r"\]\(https?://")
 _ITEM = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
@@ -17,10 +34,20 @@ _CAT = re.compile(r"[📌🔥]\s*\[\d+/\d+\]\s*\*\*(.+?)\*\*")
 _SRC = re.compile(r"^\d+\.\s*\[([^\]]+)\]")
 
 
+_META = re.compile(
+    r"^\s*(\*\*)?\[?第\s*\d+/\d+\s*批次\]?"          # [第 N/M 批次]
+    r"|^\s*\*\*(总新闻数|AI\s*分析数|时间|类型)\s*[:：]"  # 批次统计行
+    r"|^\s*[📊📰🔥📌]"                                # 区块标题行
+    r"|^\s*>"                                        # 更新时间引用
+)
+
+
 def _analysis_md(lines):
+    """AI 洞察正文 = 最后一个链接行之后的散文,剔除批次元数据/区块标题等噪声。"""
     last_link = max((i for i, l in enumerate(lines) if _LINK.search(l)), default=-1)
     tail = lines[last_link + 1:] if last_link >= 0 else []
-    return "\n".join(l for l in tail if not l.strip().startswith(">")).strip()
+    keep = [l for l in tail if l.strip() and not _META.match(l)]
+    return "\n".join(keep).strip()
 
 
 def build_sections(md_path):

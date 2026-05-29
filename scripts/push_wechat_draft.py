@@ -27,7 +27,7 @@ import markdown
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).parent))
-from digest_content import build_sections
+from digest_content import build_sections, analysis_to_html
 
 WECHAT_ENV = Path(r"D:\Dev\ai-wechat-pipeline\.env")
 OUT_DIR = Path(os.environ.get("TRENDRADAR_OUTPUT", r"D:\Dev\TrendRadar\output"))
@@ -121,10 +121,8 @@ def make_cover(edition, out_path):
 
 # ===== 公众号 HTML(精致简报:洞察在顶 + Top 12 要闻;全文走阅读原文)=====
 def build_wechat_html(analysis_md, heads, total, more_url):
-    # 把【小标题】上色,**bold** 交给 markdown
-    ana = re.sub(r"【([^】]+)】",
-                 r'<span style="color:#0a84c2;font-weight:600;">【\1】</span>', analysis_md)
-    ana_html = markdown.markdown(ana, extensions=["extra", "nl2br"])
+    # 逐行渲染(不走 markdown 列表解析,避免手写「1. 2.」生成多余空序号)
+    ana_html = analysis_to_html(analysis_md)
 
     p = ['<section style="font-size:15px;color:#333;line-height:1.85;">']
     p.append('<p style="color:#999;font-size:13px;margin:0 0 18px;">'
