@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: #07070f;
+  color: #e5e7eb;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 深空底色 + 多层霓虹辉光 */
+.bg-deepspace {
+  background:
+    radial-gradient(60rem 60rem at 15% -10%, rgba(139, 92, 246, 0.22), transparent 60%),
+    radial-gradient(50rem 50rem at 90% 0%, rgba(34, 211, 238, 0.18), transparent 55%),
+    radial-gradient(70rem 70rem at 50% 120%, rgba(217, 70, 239, 0.14), transparent 60%),
+    linear-gradient(180deg, #07070f 0%, #0a0a1a 40%, #0b0820 100%);
+}
+
+/* 发光网格 */
+.grid-overlay {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, #000 50%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, #000 50%, transparent 100%);
+}
+
+/* 渐变流光文字 */
+.text-gradient {
+  background: linear-gradient(90deg, #22d3ee, #818cf8, #d946ef, #22d3ee);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 霓虹辉光球 */
+.glow-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(64px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* 玻璃态卡片 */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-hover {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+}
+.glass-hover:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.15);
+  transform: translateY(-4px);
+}
+
+/* 霓虹按钮 */
+.btn-neon {
+  position: relative;
+  background: linear-gradient(90deg, #22d3ee, #8b5cf6);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.45), 0 0 4px rgba(139, 92, 246, 0.6) inset;
+  transition: box-shadow 0.25s ease, transform 0.15s ease;
+}
+.btn-neon:hover {
+  box-shadow: 0 0 36px rgba(34, 211, 238, 0.7), 0 0 6px rgba(139, 92, 246, 0.8) inset;
+}
+.btn-neon:active {
+  transform: scale(0.97);
+}
+
+/* 输入框霓虹描边 */
+.input-neon {
+  background: rgba(8, 8, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.input-neon:focus {
+  outline: none;
+  border-color: #22d3ee;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
+}
+
+/* 跑马灯遮罩 */
+.marquee-mask {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
