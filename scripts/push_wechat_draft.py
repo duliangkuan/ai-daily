@@ -16,6 +16,7 @@ import argparse
 import json
 import mimetypes
 import os
+import re
 import ssl
 import sys
 import urllib.request
@@ -79,11 +80,11 @@ def _upload_thumb(token, path):
     return d["media_id"]
 
 
-def _create_draft(token, html, title, digest, author, thumb_id):
+def _create_draft(token, html, title, digest, author, thumb_id, source_url=""):
     url = f"https://api.weixin.qq.com/cgi-bin/draft/add?access_token={token}"
     article = {"title": title, "author": author, "digest": digest, "content": html,
-               "thumb_media_id": thumb_id, "need_open_comment": 1,
-               "only_fans_can_comment": 0, "show_cover_pic": 1}
+               "thumb_media_id": thumb_id, "content_source_url": source_url,
+               "need_open_comment": 1, "only_fans_can_comment": 0, "show_cover_pic": 1}
     body = json.dumps({"articles": [article]}, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST",
                                  headers={"Content-Type": "application/json"})
@@ -118,33 +119,39 @@ def make_cover(edition, out_path):
     return out_path
 
 
-# ===== 公众号 HTML(分析在顶,资讯在底)=====
-def build_wechat_html(analysis_md, sections, total):
-    parts = []
-    parts.append('<section style="font-size:15px;color:#333;line-height:1.8;">')
+# ===== 公众号 HTML(精致简报:洞察在顶 + Top 12 要闻;全文走阅读原文)=====
+def build_wechat_html(analysis_md, heads, total, more_url):
+    # 把【小标题】上色,**bold** 交给 markdown
+    ana = re.sub(r"【([^】]+)】",
+                 r'<span style="color:#0a84c2;font-weight:600;">【\1】</span>', analysis_md)
+    ana_html = markdown.markdown(ana, extensions=["extra", "nl2br"])
 
-    # 1) DeepSeek 分析 —— 最上面
-    parts.append('<p style="font-size:18px;font-weight:700;color:#111;margin:6px 0 12px;">📊 今日 AI 洞察</p>')
-    ana_html = markdown.markdown(analysis_md, extensions=["extra", "nl2br"])
-    parts.append(f'<section style="color:#444;font-size:15px;line-height:1.9;">{ana_html}</section>')
+    p = ['<section style="font-size:15px;color:#333;line-height:1.85;">']
+    p.append('<p style="color:#999;font-size:13px;margin:0 0 18px;">'
+             '每天扫描 65 个 AI 信源 · DeepSeek 智能精选</p>')
 
-    parts.append('<p style="margin:24px 0 6px;color:#999;font-size:13px;">'
-                 f'— 以下为今日全部 {total} 条资讯,按主题分组 —</p>')
+    # 洞察(顶)
+    p.append('<p style="font-size:18px;font-weight:700;color:#111;margin:0 0 10px;">📊 今日 AI 洞察</p>')
+    p.append('<section style="background:#f6f8fb;border-radius:10px;padding:16px 18px;'
+             f'margin:0 0 26px;color:#444;font-size:15px;line-height:1.9;">{ana_html}</section>')
 
-    # 2) 全部资讯 —— 在底部(公众号外链不可点,纯文本标题+来源)
-    for cat, items in sections:
-        parts.append(f'<p style="font-size:16px;font-weight:700;color:#1a1040;'
-                     f'margin:20px 0 8px;border-left:4px solid #22d3ee;padding-left:10px;">{cat}'
-                     f' <span style="color:#aaa;font-weight:400;font-size:13px;">({len(items)})</span></p>')
-        for src, title, _url in items:
-            src_tag = f'<span style="color:#7c83ff;">[{src}]</span> ' if src else ""
-            parts.append(f'<p style="margin:6px 0;color:#333;font-size:14px;line-height:1.6;">'
-                         f'· {src_tag}{title}</p>')
+    # 今日要闻 Top 12
+    p.append('<p style="font-size:18px;font-weight:700;color:#111;margin:0 0 14px;">🔥 今日要闻</p>')
+    for i, (src, title, _u) in enumerate(heads, 1):
+        src_tag = f'<span style="color:#7c83ff;font-size:12px;">[{src}]</span> ' if src else ""
+        p.append(f'<p style="margin:0 0 12px;padding:0 0 12px;border-bottom:1px solid #eee;'
+                 f'font-size:15px;line-height:1.6;color:#222;">'
+                 f'<span style="color:#22b8cf;font-weight:700;">{i:02d}</span>&nbsp;&nbsp;{src_tag}{title}</p>')
 
-    parts.append('<p style="margin:28px 0 6px;color:#aaa;font-size:12px;text-align:center;">'
-                 '研究Agent的云 · 每天扫描 65 个 AI 信源,AI 精选直达</p>')
-    parts.append('</section>')
-    return "".join(parts)
+    # 阅读原文引导
+    p.append(f'<p style="margin:24px 0 4px;color:#888;font-size:14px;text-align:center;">'
+             f'完整 {total} 条资讯 + 可点击链接</p>')
+    p.append('<p style="margin:0;color:#888;font-size:14px;text-align:center;">'
+             '👇 点文末「阅读原文」查看完整网页版</p>')
+    p.append('<p style="margin:26px 0 4px;color:#bbb;font-size:12px;text-align:center;">'
+             '研究Agent的云 · 每日 AI 精选直达</p>')
+    p.append('</section>')
+    return "".join(p)
 
 
 def main():
@@ -156,6 +163,8 @@ def main():
     if not md.exists():
         log(f"找不到日报:{md}"); sys.exit(1)
     analysis_md, sections, total = build_sections(md)
+    heads = [t for _c, items in sections for t in items][:12]  # 扁平化取前 12 条要闻
+    more_url = os.environ.get("SITE_URL", "https://ai.dufengyun.xyz").rstrip("/") + "/today"
 
     hour = datetime.now().hour
     date = datetime.now().strftime("%Y-%m-%d")
@@ -164,8 +173,8 @@ def main():
     digest = (analysis_md[:80].replace("\n", " ") + "…") if analysis_md else f"今日 {total} 条 AI 资讯精选"
     author = "研究Agent的云"
 
-    html = build_wechat_html(analysis_md, sections, total)
-    log(f"{edition}｜分类 {len(sections)} 组,资讯 {total} 条,HTML {len(html):,} 字符")
+    html = build_wechat_html(analysis_md, heads, total, more_url)
+    log(f"{edition}｜要闻 {len(heads)} 条 / 全 {total} 条,阅读原文 → {more_url}，HTML {len(html):,} 字符")
 
     # 本地预览
     preview = OUT_DIR / "html" / f"wechat-draft-{date}.html"
@@ -190,7 +199,7 @@ def main():
     log("token OK")
     thumb_id = _upload_thumb(token, cover)
     log(f"封面上传 OK -> {thumb_id[:24]}…")
-    media_id = _create_draft(token, html, title, digest, author, thumb_id)
+    media_id = _create_draft(token, html, title, digest, author, thumb_id, source_url=more_url)
     log(f"✓ 草稿已建 media_id: {media_id}")
     log("公众号后台 → 草稿箱 → 审阅 → 发出")
 
