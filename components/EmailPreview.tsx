@@ -54,7 +54,7 @@ function buildSamples(dateLabel: string): Sample[] {
 /** 单封邮件样张 —— 还原 send_digest / lib/mail 的真实排版 */
 function MailCard({ sample }: { sample: Sample }) {
   return (
-    <div className="glass overflow-hidden rounded-2xl">
+    <div className="glass flex h-full flex-col overflow-hidden rounded-2xl">
       {/* 邮件客户端头：发件人 + 主题 */}
       <div className="border-b border-white/8 bg-white/[0.02] px-4 py-3">
         <div className="text-[11px] uppercase tracking-wider text-neon-cyan/80">
@@ -69,9 +69,9 @@ function MailCard({ sample }: { sample: Sample }) {
         </div>
       </div>
 
-      {/* 邮件正文：1:1 还原真实邮件（深色头 + 白底 + 渐变按钮） */}
-      <div className="bg-[#f4f5f7] p-3">
-        <div className="mx-auto max-w-[420px] overflow-hidden rounded-lg bg-white">
+      {/* 邮件正文：1:1 还原真实邮件（深色头 + 白底 + 渐变按钮）；flex 撑满使多卡等高 */}
+      <div className="flex flex-1 flex-col bg-[#f4f5f7] p-3">
+        <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col overflow-hidden rounded-lg bg-white">
           <div
             className="px-5 py-5 text-white"
             style={{ background: "linear-gradient(90deg,#0a0a1a,#1a1040)" }}
@@ -81,24 +81,28 @@ function MailCard({ sample }: { sample: Sample }) {
             </div>
             <div className="mt-1.5 text-[17px] font-bold">{sample.badge}</div>
           </div>
-          <div className="px-5 py-5">
-            {sample.lines.map((line, i) => (
-              <p
-                key={i}
-                className={`text-[13.5px] leading-relaxed ${
-                  i === sample.lines.length - 1 ? "mb-4 text-[#6b7280]" : "mb-2.5 text-[#1f2937]"
-                }`}
-              >
-                {line}
-              </p>
-            ))}
+          <div className="flex flex-1 flex-col px-5 py-5">
+            {/* 正文文字区：flex-1 撑开，把按钮顶到底部，多卡按钮对齐 */}
+            <div className="flex-1">
+              {sample.lines.map((line, i) => (
+                <p
+                  key={i}
+                  className={`text-[13.5px] leading-relaxed ${
+                    i === sample.lines.length - 1 ? "mb-5 text-[#6b7280]" : "mb-2.5 text-[#1f2937]"
+                  }`}
+                >
+                  {line}
+                </p>
+              ))}
+            </div>
             <div className="text-center">
-              <span
-                className="inline-block rounded-[10px] px-6 py-2.5 text-[13.5px] font-bold text-[#08081a]"
+              <a
+                href="/today"
+                className="inline-block rounded-[10px] px-6 py-2.5 text-[13.5px] font-bold text-[#08081a] transition-transform hover:scale-[1.03]"
                 style={{ background: "linear-gradient(90deg,#22d3ee,#8b5cf6)" }}
               >
                 阅读今日 AI 日报 →
-              </span>
+              </a>
             </div>
           </div>
           <div className="border-t border-[#eee] px-5 py-3 text-center text-[11px] leading-relaxed text-[#9aa0a6]">
@@ -145,7 +149,7 @@ export default function EmailPreview() {
         邮件简洁不打扰，一键直达当日全文，下面是真实样张 👇
       </motion.p>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {samples.map((s, i) => (
           <motion.div
             key={s.subject}
@@ -154,6 +158,7 @@ export default function EmailPreview() {
             whileInView="show"
             viewport={{ once: true }}
             custom={i}
+            className="h-full"
           >
             <MailCard sample={s} />
           </motion.div>
