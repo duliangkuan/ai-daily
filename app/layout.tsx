@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ScrollNudge from "@/components/ScrollNudge";
 
 export const metadata: Metadata = {
   title: "研究Agent的云 · AI 日报订阅",
@@ -27,7 +28,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <ScrollNudge />
+        {children}
+      </body>
     </html>
   );
 }
