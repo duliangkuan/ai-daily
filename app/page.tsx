@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import NeonBackground from "@/components/NeonBackground";
 import CountUp from "@/components/CountUp";
 import SubscribeForm from "@/components/SubscribeForm";
+import EmailPreview from "@/components/EmailPreview";
 import Support from "@/components/Support";
 import { CloudIcon, RadarIcon, FunnelIcon, MailIcon, GithubIcon } from "@/components/Icons";
 import { REPO_URL } from "@/lib/config";
@@ -131,7 +132,7 @@ export default function Home() {
           initial="hidden"
           animate="show"
           custom={1}
-          className="text-balance text-5xl font-bold leading-[1.1] tracking-tight sm:text-7xl"
+          className="text-balance text-4xl font-bold leading-[1.12] tracking-tight sm:text-6xl md:text-7xl"
         >
           <span className="text-gradient animate-gradient-x">AI 圈的每一天</span>
           <br />
@@ -229,6 +230,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* 订阅邮件样张 */}
+      <EmailPreview />
+
       {/* 支持一下：GitHub Star + 微信赞赏 */}
       <Support />
 
@@ -260,6 +264,12 @@ export default function Home() {
           <span>研究Agent的云 · AI 日报</span>
         </div>
         <p className="mt-2">每天扫描 65 信源 · DeepSeek 智能精选 · 早晚直达邮箱</p>
+        <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-white/45">
+          <span>联系作者 · 微信</span>
+          <span className="select-all font-mono font-semibold text-neon-cyan">FengYunAgent</span>
+          <span className="hidden sm:inline text-white/20">·</span>
+          <span className="w-full sm:w-auto">公众号「研究Agent的云」</span>
+        </p>
       </footer>
     </main>
   );

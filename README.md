@@ -20,6 +20,12 @@
 
 ---
 
+> ### 📬 订阅网址
+>
+> 打开 **https://ai.dufengyun.xyz** ，留个邮箱，即可每天早晚收到 AI 圈精选日报。
+
+---
+
 ## ✨ 这是什么
 
 「研究Agent的云 · AI 日报」是一个**全自动的 AI 资讯精选 + 多渠道分发系统**。一个暗色霓虹风格的订阅站，访客留个邮箱，就能每天早晚收到 AI 圈的精选要闻——由 AI 从全球 70+ 信源里替你读完、筛好、送达。
@@ -74,7 +80,7 @@ npm run dev      # http://localhost:3000
 <table>
 <tr>
 <td align="center" width="25%"><b>📢 公众号</b><br/><sub>研究Agent的云</sub></td>
-<td align="center" width="25%"><b>💬 个人微信</b><br/><sub>加我好友</sub></td>
+<td align="center" width="25%"><b>💬 个人微信</b><br/><sub>FengYunAgent</sub></td>
 <td align="center" width="25%"><b>👥 交流群</b><br/><sub>fengyun-publish</sub></td>
 <td align="center" width="25%"><b>☕ 赞赏</b><br/><sub>请作者喝咖啡</sub></td>
 </tr>
