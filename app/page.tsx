@@ -6,6 +6,7 @@ import CountUp from "@/components/CountUp";
 import SubscribeForm from "@/components/SubscribeForm";
 import EmailPreview from "@/components/EmailPreview";
 import Support from "@/components/Support";
+import Collaborate from "@/components/Collaborate";
 import { CloudIcon, RadarIcon, FunnelIcon, MailIcon, GithubIcon } from "@/components/Icons";
 import { REPO_URL } from "@/lib/config";
 import type { ComponentType, SVGProps } from "react";
@@ -105,6 +106,12 @@ export default function Home() {
           >
             <GithubIcon size={16} />
             <span className="hidden sm:inline">Star</span>
+          </a>
+          <a
+            href="#collaborate"
+            className="glass glass-hover hidden rounded-full px-4 py-2 text-sm text-white/80 sm:inline-block"
+          >
+            合作
           </a>
           <a
             href="#subscribe"
@@ -235,6 +242,9 @@ export default function Home() {
 
       {/* 支持一下：GitHub Star + 微信赞赏 */}
       <Support />
+
+      {/* 找我合作：定制开发 + 授课服务 + 个人微信 */}
+      <Collaborate />
 
       {/* 末尾 CTA */}
       <section className="mx-auto max-w-3xl px-6 pb-24 pt-6 text-center">

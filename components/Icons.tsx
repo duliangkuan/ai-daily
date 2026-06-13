@@ -111,6 +111,46 @@ export function StarIcon({ size = 24, ...p }: IconProps) {
   );
 }
 
+/** 尖括号代码 — 定制开发 */
+export function CodeIcon({ size = 24, ...p }: IconProps) {
+  const id = "g-code";
+  return (
+    <svg {...base(size)} {...p}>
+      <Grad id={id} />
+      <path d="m8 8-4 4 4 4" stroke={`url(#${id})`} />
+      <path d="m16 8 4 4-4 4" stroke={`url(#${id})`} />
+      <path d="m13.5 6-3 12" stroke={`url(#${id})`} opacity="0.75" />
+    </svg>
+  );
+}
+
+/** 讲台/黑板 — 授课服务 */
+export function TeachIcon({ size = 24, ...p }: IconProps) {
+  const id = "g-teach";
+  return (
+    <svg {...base(size)} {...p}>
+      <Grad id={id} />
+      <rect x="3" y="4" width="18" height="11" rx="2" stroke={`url(#${id})`} />
+      <path d="M7.5 9.5 11 12l-3.5 2.5" stroke={`url(#${id})`} opacity="0.8" />
+      <path d="M13 14h4" stroke={`url(#${id})`} opacity="0.8" />
+      <path d="M12 15v3m-3.5 2.5L12 18l3.5 2.5" stroke={`url(#${id})`} />
+    </svg>
+  );
+}
+
+/** 握手 — 合作 */
+export function HandshakeIcon({ size = 24, ...p }: IconProps) {
+  const id = "g-shake";
+  return (
+    <svg {...base(size)} {...p}>
+      <Grad id={id} />
+      <path d="m11 17 2 2a1 1 0 0 0 1.5-.1l3.5-4 2 .9" stroke={`url(#${id})`} />
+      <path d="M3 8.5 5 7.6 9 11a1.5 1.5 0 0 0 2.1 0l1.2-1.2a1 1 0 0 1 1.4 0L18.5 14 21 13" stroke={`url(#${id})`} />
+      <path d="M5 7.6 8.5 6.5a3 3 0 0 1 2.4.3L13 8" stroke={`url(#${id})`} opacity="0.8" />
+    </svg>
+  );
+}
+
 /** 爱心 — 赞赏 */
 export function HeartIcon({ size = 24, ...p }: IconProps) {
   const id = "g-heart";
