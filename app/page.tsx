@@ -240,11 +240,11 @@ export default function Home() {
       {/* 订阅邮件样张 */}
       <EmailPreview />
 
+      {/* 找我合作：定制资讯系统 + 授课服务 + 个人微信（重点区块，靠前展示） */}
+      <Collaborate />
+
       {/* 支持一下：GitHub Star + 微信赞赏 */}
       <Support />
-
-      {/* 找我合作：定制开发 + 授课服务 + 个人微信 */}
-      <Collaborate />
 
       {/* 末尾 CTA */}
       <section className="mx-auto max-w-3xl px-6 pb-24 pt-6 text-center">
