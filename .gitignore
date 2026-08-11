@@ -10,3 +10,5 @@ next-env.d.ts
 .vercel
 
 .env*.local
+__pycache__/
+*.pyc
