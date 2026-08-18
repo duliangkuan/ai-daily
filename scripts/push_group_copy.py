@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-push_group_copy.py — AI 日报「社群转发文案」生成 + 推送企微
+push_group_copy.py — AI 日报「社群转发文案」生成 + 推送社群
 
 链路:
   latest_daily.md (TrendRadar 产出)
     → digest_content.build_condensed 抽「DeepSeek 分析 + Top 条目」
     → DeepSeek 加工成「精选速览版」纯文本文案(复制即可转发微信群)
-    → 企微群机器人 webhook
-  运营同学在企微复制 → 转发到 10 个 AI 微信群。
+    → 企微群机器人 webhook / 飞书会员群
+  运营同学在企微复制 → 转发到 10 个 AI 微信群；会员飞书群直接接收同款内容。
 
 设计要点:
   · 输出纯文本(emoji + 数字序号 + 换行),不含 markdown 语法 —— 运营从企微
@@ -18,7 +18,8 @@ push_group_copy.py — AI 日报「社群转发文案」生成 + 推送企微
 
 用法:
   python push_group_copy.py --dry-run   # 只生成并打印,不推送
-  python push_group_copy.py             # 生成并推送企微
+  python push_group_copy.py             # 按 GROUP_COPY_CHANNELS 推送
+  python push_group_copy.py --existing  # 复用已落盘文案并推送，不重复调用模型
 
 环境变量:
   TRENDRADAR_OUTPUT  latest_daily.md 所在目录(默认 D:\\Dev\\TrendRadar\\output)
@@ -26,17 +27,30 @@ push_group_copy.py — AI 日报「社群转发文案」生成 + 推送企微
   DEEPSEEK_API_KEY   DeepSeek key(缺省时从 config.yaml 的 ai.api_key 读)
   DEEPSEEK_API_BASE  DeepSeek 端点(默认 https://api.deepseek.com)
   DEEPSEEK_MODEL     模型(默认 deepseek-chat)
-  WEWORK_WEBHOOK     企微群机器人 webhook(推送必填)
+  GROUP_COPY_CHANNELS  推送渠道，逗号分隔：wework、feishu_webhook、feishu_bot、feishu_cli（默认 wework）
+  WEWORK_WEBHOOK     企微群机器人 webhook（启用 wework 时必填）
+  FEISHU_WEBHOOK     飞书群机器人 Webhook（启用 feishu_webhook 时必填）
+  FEISHU_CHAT_ID     飞书群 chat_id（启用 feishu_cli 时必填）
+  FEISHU_CLI_BIN     可选，lark-cli 可执行文件路径（默认 lark-cli）
+  FEISHU_APP_ID      飞书应用 App ID（启用 feishu_bot 时必填）
+  FEISHU_APP_SECRET  飞书应用 App Secret（启用 feishu_bot 时必填）
   GROUP_COPY_SITE    完整版链接(默认 https://ai.dufengyun.xyz/today)
 """
 import os
 import re
 import sys
 import json
+import shutil
+import subprocess
 import datetime as _dt
 from pathlib import Path
 
 import requests
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from digest_content import build_sections  # noqa: E402
@@ -203,29 +217,158 @@ def push_wework(content: str) -> None:
     log("企微推送成功 ✓")
 
 
+def push_feishu_cli(content: str) -> None:
+    """通过 lark-cli 向会员飞书群发送与企微完全相同的纯文本日报。"""
+    chat_id = os.environ.get("FEISHU_CHAT_ID", "").strip()
+    if not chat_id:
+        raise SystemExit("缺 FEISHU_CHAT_ID，无法推送飞书会员群")
+
+    cli = os.environ.get("FEISHU_CLI_BIN", "lark-cli").strip() or "lark-cli"
+    cli_path = shutil.which(cli)
+    if not cli_path:
+        raise SystemExit(f"找不到飞书 CLI：{cli}")
+
+    log(f"推送飞书纯文本消息（{len(content.encode('utf-8'))} 字节）")
+    args = ["im", "+messages-send", "--chat-id", chat_id, "--text", content, "--as", "user"]
+    # npm 在 Windows 安装的 CLI 通常是 .cmd shim，Python 无法直接执行。
+    # 优先经同目录的 PowerShell shim 调用，参数保持数组传递，避免日报正文被 shell 解释。
+    ps1 = Path(cli_path).with_suffix(".ps1")
+    if os.name == "nt" and ps1.exists():
+        command = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), *args]
+    else:
+        command = [cli_path, *args]
+    result = subprocess.run(
+        command,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise SystemExit(f"飞书推送失败（exit {result.returncode}）：{detail}")
+    log("飞书会员群推送成功 ✓")
+
+
+def push_feishu_webhook(content: str) -> None:
+    """通过飞书群机器人 Webhook 向云端定时任务发送日报。"""
+    webhook = os.environ.get("FEISHU_WEBHOOK", "").strip()
+    if not webhook:
+        raise SystemExit("缺 FEISHU_WEBHOOK，无法推送飞书会员群")
+
+    log(f"飞书 Webhook 推送纯文本消息（{len(content.encode('utf-8'))} 字节）")
+    response = requests.post(
+        webhook,
+        json={"msg_type": "text", "content": {"text": content}},
+        timeout=30,
+    )
+    response.raise_for_status()
+    data = response.json()
+    if data.get("code", data.get("StatusCode")) != 0:
+        raise SystemExit(f"飞书 Webhook 推送失败：{data.get('msg', data.get('StatusMessage', '未知错误'))}")
+    log("飞书 Webhook 推送成功 ✓")
+
+
+def push_feishu_bot(content: str) -> None:
+    """用飞书应用机器人直连 OpenAPI，供云端定时任务使用。"""
+    chat_id = os.environ.get("FEISHU_CHAT_ID", "").strip()
+    app_id = os.environ.get("FEISHU_APP_ID", "").strip()
+    app_secret = os.environ.get("FEISHU_APP_SECRET", "").strip()
+    missing = [name for name, value in {
+        "FEISHU_CHAT_ID": chat_id,
+        "FEISHU_APP_ID": app_id,
+        "FEISHU_APP_SECRET": app_secret,
+    }.items() if not value]
+    if missing:
+        raise SystemExit(f"缺 {'、'.join(missing)}，无法由飞书机器人推送")
+
+    token_resp = requests.post(
+        "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        json={"app_id": app_id, "app_secret": app_secret},
+        timeout=30,
+    )
+    token_resp.raise_for_status()
+    token_data = token_resp.json()
+    if token_data.get("code") != 0 or not token_data.get("tenant_access_token"):
+        raise SystemExit(f"获取飞书机器人 token 失败：{token_data.get('msg', '未知错误')}")
+
+    log(f"飞书机器人推送纯文本消息（{len(content.encode('utf-8'))} 字节）")
+    send_resp = requests.post(
+        "https://open.feishu.cn/open-apis/im/v1/messages",
+        params={"receive_id_type": "chat_id"},
+        headers={"Authorization": f"Bearer {token_data['tenant_access_token']}"},
+        json={"receive_id": chat_id, "msg_type": "text", "content": json.dumps({"text": content}, ensure_ascii=False)},
+        timeout=30,
+    )
+    send_resp.raise_for_status()
+    send_data = send_resp.json()
+    if send_data.get("code") != 0:
+        raise SystemExit(f"飞书机器人推送失败：{send_data.get('msg', '未知错误')}")
+    log("飞书机器人推送成功 ✓")
+
+
+def delivery_channels() -> list[str]:
+    """解析目标渠道；默认保持旧的企微行为，避免影响既有群推送。"""
+    raw = os.environ.get("GROUP_COPY_CHANNELS", "wework")
+    channels = [item.strip().lower() for item in raw.split(",") if item.strip()]
+    if not channels:
+        raise SystemExit("GROUP_COPY_CHANNELS 不能为空")
+    unsupported = set(channels) - {"wework", "feishu_webhook", "feishu_bot", "feishu_cli"}
+    if unsupported:
+        raise SystemExit(f"不支持的推送渠道：{', '.join(sorted(unsupported))}")
+    return list(dict.fromkeys(channels))
+
+
+def copy_output_path() -> Path:
+    out = os.environ.get("GROUP_COPY_OUT", "").strip()
+    return Path(out) if out else Path(__file__).resolve().parent.parent / "outputs" / "group_copy_latest.txt"
+
+
 def save_copy(content: str) -> Path:
     """落盘企微文案（供 xhs-fab 等复用拉取；路径走 env GROUP_COPY_OUT，默认仓库 outputs/）。
     每次生成覆盖同名文件，保持「最新一份」语义。"""
-    out = os.environ.get("GROUP_COPY_OUT", "").strip()
-    p = Path(out) if out else Path(__file__).resolve().parent.parent / "outputs" / "group_copy_latest.txt"
+    p = copy_output_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
     log(f"已落盘: {p}")
     return p
 
 
+def load_saved_copy() -> str:
+    """读取早间任务已生成的社群文案，供 9:00 飞书任务原样复用。"""
+    p = copy_output_path()
+    if not p.exists():
+        raise SystemExit(f"找不到已落盘社群文案：{p}")
+    content = p.read_text(encoding="utf-8").strip()
+    if not content:
+        raise SystemExit(f"已落盘社群文案为空：{p}")
+    log(f"复用已落盘文案：{p}")
+    return content
+
+
 def main():
     dry = "--dry-run" in sys.argv
-    content = generate_copy()
+    existing = "--existing" in sys.argv
+    content = load_saved_copy() if existing else generate_copy()
     print("\n" + "=" * 40 + " 文案预览 " + "=" * 40)
     print(content)
     print("=" * 90)
     print(f"[长度] {len(content)} 字 / {len(content.encode('utf-8'))} 字节\n")
-    save_copy(content)  # 先落盘（dry-run 也落盘，供复用/排查）
+    if not existing:
+        save_copy(content)  # 先落盘（dry-run 也落盘，供复用/排查）
     if dry:
         log("dry-run,未推送")
         return
-    push_wework(content)
+    for channel in delivery_channels():
+        if channel == "wework":
+            push_wework(content)
+        elif channel == "feishu_webhook":
+            push_feishu_webhook(content)
+        elif channel == "feishu_bot":
+            push_feishu_bot(content)
+        elif channel == "feishu_cli":
+            push_feishu_cli(content)
 
 
 if __name__ == "__main__":
