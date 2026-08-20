@@ -96,6 +96,21 @@ npm run dev      # http://localhost:3000
 
 </div>
 
+## 🛡️ 飞书会员群可靠投递
+
+- 08:00 任务生成并落盘 `outputs/group_copy_latest.txt`。
+- 09:00 任务复用当日文案推送飞书，不重复调用模型。
+- Webhook 临时失败时最多重试 3 次；待发正文写入私有状态目录，状态文件不保存 Webhook。
+- 同一天同一份正文只发送一次，09:05 可安全再次执行同一脚本作为补投，不会重复刷群。
+- 生产入口：`scripts/push_feishu_daily.sh`；日志：`/root/daily.log`；状态：`/root/ai-daily/state/feishu_daily/`。
+
+本地验证：
+
+```bash
+python -m unittest tests.test_feishu_daily_delivery -v
+python -m py_compile scripts/push_group_copy.py
+```
+
 ## 📄 License
 
 [MIT](./LICENSE) © 风云

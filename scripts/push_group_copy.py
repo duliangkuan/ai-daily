@@ -40,6 +40,8 @@ import os
 import re
 import sys
 import json
+import time
+import hashlib
 import shutil
 import subprocess
 import datetime as _dt
@@ -54,6 +56,10 @@ if hasattr(sys.stderr, "reconfigure"):
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from digest_content import build_sections  # noqa: E402
+
+
+class FeishuDeliveryError(RuntimeError):
+    """飞书 Webhook 在完成重试后仍无法投递。"""
 
 
 def log(m):
@@ -251,23 +257,116 @@ def push_feishu_cli(content: str) -> None:
     log("飞书会员群推送成功 ✓")
 
 
-def push_feishu_webhook(content: str) -> None:
-    """通过飞书群机器人 Webhook 向云端定时任务发送日报。"""
-    webhook = os.environ.get("FEISHU_WEBHOOK", "").strip()
+def _load_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _save_json(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp.replace(path)
+
+
+def _delivery_key(content: str, today: _dt.date) -> tuple[str, str]:
+    digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    return f"{today.isoformat()}:{digest}", digest
+
+
+def deliver_feishu_webhook(
+    content: str,
+    *,
+    webhook: str,
+    state_dir: Path,
+    post=requests.post,
+    retries: int = 3,
+    sleeper=time.sleep,
+    today: _dt.date | None = None,
+) -> dict:
+    """可靠投递一份日报：同日幂等、失败落盘、最多重试 retries 次。"""
     if not webhook:
-        raise SystemExit("缺 FEISHU_WEBHOOK，无法推送飞书会员群")
+        raise FeishuDeliveryError("缺 FEISHU_WEBHOOK，无法推送飞书会员群")
+    if retries < 1:
+        raise ValueError("retries 必须至少为 1")
+
+    state_dir = Path(state_dir)
+    pending_path = state_dir / "pending.json"
+    sent_path = state_dir / "sent.json"
+    current_day = today or _dt.date.today()
+    key, digest = _delivery_key(content, current_day)
+
+    sent = _load_json(sent_path)
+    if sent.get("key") == key:
+        return {"status": "already_sent", "key": key, "hash": digest}
+
+    pending = _load_json(pending_path)
+    if pending.get("key") and pending.get("key") != key:
+        log(f"忽略过期待发记录：{pending.get('key', '').split(':', 1)[0]}")
+
+    _save_json(pending_path, {
+        "key": key,
+        "hash": digest,
+        "text": content,
+        "queued_at": _dt.datetime.now().isoformat(timespec="seconds"),
+    })
+
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            response = post(
+                webhook,
+                json={"msg_type": "text", "content": {"text": content}},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+            code = data.get("code", data.get("StatusCode"))
+            if code != 0:
+                message = data.get("msg", data.get("StatusMessage", "未知错误"))
+                raise FeishuDeliveryError(f"code={code}: {message}")
+
+            _save_json(sent_path, {
+                "key": key,
+                "hash": digest,
+                "sent_at": _dt.datetime.now().isoformat(timespec="seconds"),
+            })
+            pending_path.unlink(missing_ok=True)
+            return {"status": "sent", "key": key, "hash": digest, "attempts": attempt}
+        except Exception as exc:
+            last_error = exc
+            log(f"飞书 Webhook 第 {attempt}/{retries} 次投递失败：{exc}")
+            if attempt < retries:
+                sleeper(1.5 * attempt)
+
+    raise FeishuDeliveryError(f"飞书 Webhook 推送失败（已重试 {retries} 次）：{last_error}")
+
+
+def push_feishu_webhook(content: str) -> dict:
+    """通过飞书群机器人 Webhook 可靠投递日报。"""
+    webhook = os.environ.get("FEISHU_WEBHOOK", "").strip()
+    state_dir = Path(os.environ.get(
+        "FEISHU_DAILY_STATE_DIR",
+        str(Path(__file__).resolve().parent.parent / "outputs" / "feishu_daily_state"),
+    ))
+    retries = int(os.environ.get("FEISHU_DAILY_RETRIES", "3"))
 
     log(f"飞书 Webhook 推送纯文本消息（{len(content.encode('utf-8'))} 字节）")
-    response = requests.post(
-        webhook,
-        json={"msg_type": "text", "content": {"text": content}},
-        timeout=30,
+    result = deliver_feishu_webhook(
+        content,
+        webhook=webhook,
+        state_dir=state_dir,
+        retries=retries,
     )
-    response.raise_for_status()
-    data = response.json()
-    if data.get("code", data.get("StatusCode")) != 0:
-        raise SystemExit(f"飞书 Webhook 推送失败：{data.get('msg', data.get('StatusMessage', '未知错误'))}")
-    log("飞书 Webhook 推送成功 ✓")
+    if result["status"] == "already_sent":
+        log("飞书日报今日已发送，幂等跳过 ✓")
+    else:
+        log(f"飞书 Webhook 推送成功（第 {result['attempts']} 次）✓")
+    return result
 
 
 def push_feishu_bot(content: str) -> None:
